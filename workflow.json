@@ -1,0 +1,1295 @@
+{
+  "name": "Shein Order Bot - Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "d55ed4c5-8ff0-45e7-a925-fc48c0efbd39",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1424,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// استخراج معلومات الرسالة\nconst msg = $input.first().json;\nconst text = msg?.message?.text || '';\nconst chatId = msg?.message?.chat?.id;\nconst userId = msg?.message?.from?.id;\nconst username = msg?.message?.from?.first_name || 'عزيزي';\n\n// ✅ pattern موسع يشمل كل subdomains شي ان\nconst sheinPattern = /https?:\\/\\/([a-z0-9\\-]+\\.)*shein\\.(com|me|com\\.cn)[^\\s]*/gi;\nconst urls = text.match(sheinPattern) || [];\nconst hasSheinLink = urls.length > 0;\nconst sheinUrl = urls[0] || null;\n\n// تصنيف نوع الرسالة\nlet messageType = 'greeting';\nif (hasSheinLink) {\n  // ✅ روابط السلة المشتركة تيجي كـ sharejump مع cart في الـ link parameter\n  const urlLower = sheinUrl?.toLowerCase() || '';\n  if (\n    urlLower.includes('cart') ||\n    urlLower.includes('bag') ||\n    urlLower.includes('sharejump') // روابط المشاركة ممكن تكون سلة أو منتج، Claude يحدد\n  ) {\n    messageType = 'shared_link'; // نخلي Claude يقرر بعد ما يفتح الرابط\n  } else if (urlLower.includes('/product') || urlLower.includes('-p-')) {\n    messageType = 'product_link';\n  } else {\n    messageType = 'shared_link';\n  }\n}\n\nreturn [{\n  json: {\n    chatId,\n    userId: String(userId),\n    username,\n    text,\n    hasSheinLink,\n    sheinUrl,\n    messageType,\n    rawMessage: msg\n  }\n}];"
+      },
+      "id": "b3313632-e713-4cf4-a806-7aec5e50025b",
+      "name": "Extract Message Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// دمج بيانات الرسالة مع الـ Session الحالي\nconst messageData = $('Extract Message Info').first().json;\nconst sessionRaw = $input.first().json?.value;\n\nlet session = {};\ntry {\n  session = sessionRaw ? JSON.parse(sessionRaw) : {};\n} catch(e) {\n  session = {};\n}\n\n// الحالة الافتراضية\nif (!session.state) {\n  session.state = 'idle';\n}\n\nreturn [{\n  json: {\n    ...messageData,\n    session\n  }\n}];"
+      },
+      "id": "ed84993e-d7fc-40ba-8ccf-87214d8af8f3",
+      "name": "Merge Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.hasSheinLink }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    },
+                    "id": "e069df49-66a9-4d8a-a132-d704d2ab88f3"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "has_link"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.session.state }}",
+                    "rightValue": "waiting_name",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "bcc0de76-5ebc-4126-afa4-ee8c8fbf0886"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "waiting_name"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.session.state }}",
+                    "rightValue": "waiting_phone",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "d9a12fa4-9a7e-4be2-b9b7-93a9263a3903"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "waiting_phone"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.session.state }}",
+                    "rightValue": "waiting_area",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "00285b4c-8659-4bb4-b9d9-2bc4887c0c10"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "waiting_area"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.session.state }}",
+                    "rightValue": "waiting_confirmation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ba401ac2-a0d1-4f94-a41a-48211c759588"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "waiting_confirmation"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "7c1dfaa0-af70-4590-9e8d-09ba628f0c3e",
+      "name": "Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -528,
+        -352
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.sheinUrl }}",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 5
+            }
+          },
+          "response": {
+            "response": {}
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "811073f1-842a-48b7-a0ed-864e24964383",
+      "name": "Fetch Shein Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -304,
+        -880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// الرابط اللي وصلنا من Fetch Shein Page بعد الـ redirect\nconst response = $input.first();\n\n// n8n بيحفظ الـ URL النهائي بعد الـ redirect هون\nconst finalUrl = response.json.$response?.headers?.['x-final-url'] \n  || response.json.$response?.url\n  || $('Merge Session').first().json.sheinUrl;\n\n// استخرج اسم المنتج من الـ og:title أو title\nconst html = response.json.data || '';\nconst titleMatch = html.match(/<title[^>]*>([^<]+)<\\/title>/i);\nconst ogTitleMatch = html.match(/property=\"og:title\"\\s+content=\"([^\"]+)\"/i);\nconst ogPriceMatch = html.match(/property=\"product:price:amount\"\\s+content=\"([^\"]+)\"/i);\nconst ogImageMatch = html.match(/property=\"og:image\"\\s+content=\"([^\"]+)\"/i);\n\nconst productName = ogTitleMatch?.[1] || titleMatch?.[1] || 'منتج Shein';\nconst price = parseFloat(ogPriceMatch?.[1] || '0');\nconst imageUrl = ogImageMatch?.[1] || null;\n\nreturn [{\n  json: {\n    ...response.json,\n    extractedProduct: {\n      productName: productName.replace(' | SHEIN', '').trim(),\n      price,\n      imageUrl,\n      description: productName,\n      isCart: false,\n      cartItems: [],\n      cartTotal: 0\n    }\n  }\n}];"
+      },
+      "id": "2f83815c-c519-4cb6-906b-e203a2f55663",
+      "name": "Parse Product Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// حفظ بيانات الطلب في الـ session\nconst data = $input.first().json;\n\nconst newSession = {\n  state: 'waiting_name',\n  sheinUrl: data.sheinUrl,\n  productData: data.productData,\n  orderSummary: data.orderSummary,\n  productsTotal: data.productsTotal\n};\n\nreturn [{\n  json: {\n    ...data,\n    newSession,\n    sessionKey: 'session_' + data.userId,\n    sessionValue: JSON.stringify(newSession)\n  }\n}];"
+      },
+      "id": "11c944d2-6624-4664-b803-74009b3e35fb",
+      "name": "Prepare Session - Product",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        -880
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=أهلاً {{ $('Telegram Trigger').item.json.message.from.first_name }}\n\nتمام، شفت طلبك على Shein 👀\n\n{{ $('Prepare Session - Product').item.json.extractedProduct.price }}\n━━━━━━━━━━━━━━━\nعشان أكمل الطلب، ممكن تعطيني *اسمك الكامل*؟",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "761c985e-d6da-49b0-87b9-106fa7b1f64b",
+      "name": "Send Product Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        944,
+        -880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// معالجة الاسم وتحديث الـ session\nconst data = $input.first().json;\nconst name = data.text?.trim();\n\nconst updatedSession = {\n  ...data.session,\n  state: 'waiting_phone',\n  customerName: name\n};\n\nreturn [{\n  json: {\n    ...data,\n    customerName: name,\n    sessionKey: 'session_' + data.userId,\n    sessionValue: JSON.stringify(updatedSession),\n    newSession: updatedSession\n  }\n}];"
+      },
+      "id": "87928453-c64b-4274-b72d-090a0491c530",
+      "name": "Process Name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        -576
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Process Name').first().json.chatId }}",
+        "text": "=تمام {{ $('Process Name').first().json.customerName }}! 😊\n\nالحين ممكن تعطيني *رقم هاتفك* للتواصل؟",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "40d1e3d3-6d2c-45ac-8558-b1b0fc5630a1",
+      "name": "Ask Phone",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        -576
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// معالجة رقم الهاتف\nconst data = $input.first().json;\nconst phone = data.text?.trim();\n\nconst updatedSession = {\n  ...data.session,\n  state: 'waiting_area',\n  customerPhone: phone\n};\n\nreturn [{\n  json: {\n    ...data,\n    customerPhone: phone,\n    sessionKey: 'session_' + data.userId,\n    sessionValue: JSON.stringify(updatedSession),\n    newSession: updatedSession\n  }\n}];"
+      },
+      "id": "a5bd7996-e77f-4e10-90b2-3bf71ac79cad",
+      "name": "Process Phone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Process Phone').first().json.chatId }}",
+        "text": "ممتاز! 📍\n\nالحين أخبرني *منطقتك* عشان أحسب سعر التوصيل:\n\n🏙️ *عمان* - توصيل 1 دينار\n🗺️ *خارج عمان* - توصيل 2 دينار\n\nاكتب منطقتك (مثال: عمان، الزرقاء، إربد، العقبة...)",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "cd5b1310-0f82-431f-a9d7-17014a175928",
+      "name": "Ask Area",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// معالجة المنطقة وحساب التوصيل\nconst data = $input.first().json;\nconst areaInput = data.text?.trim().toLowerCase();\n\n// مناطق عمان\nconst ammanAreas = ['عمان', 'amman', 'العاصمة', 'الجاردنز', 'الشميساني', 'الرابية', 'صويلح', 'مرج الحمام', 'تلاع العلي', 'الجبيهة', 'ماركا', 'الزهور', 'وادي صقرة', 'الرشيد', 'الويبدة', 'جبل الحسين', 'جبل عمان', 'العبدلي', 'الدوار'];\n\nconst isAmman = ammanAreas.some(area => areaInput.includes(area.toLowerCase()));\nconst deliveryFee = isAmman ? 1 : 2;\nconst deliveryText = isAmman ? 'داخل عمان' : 'خارج عمان';\n\nconst productsTotal = data.session.productsTotal || 0;\nconst grandTotal = parseFloat((productsTotal + deliveryFee).toFixed(3));\n\nconst updatedSession = {\n  ...data.session,\n  state: 'waiting_confirmation',\n  customerArea: data.text?.trim(),\n  deliveryFee,\n  deliveryText,\n  grandTotal\n};\n\nreturn [{\n  json: {\n    ...data,\n    customerArea: data.text?.trim(),\n    deliveryFee,\n    deliveryText,\n    grandTotal,\n    productsTotal,\n    orderSummary: data.session.orderSummary,\n    customerName: data.session.customerName,\n    customerPhone: data.session.customerPhone,\n    sessionKey: 'session_' + data.userId,\n    sessionValue: JSON.stringify(updatedSession),\n    newSession: updatedSession\n  }\n}];"
+      },
+      "id": "afe81c18-fd44-4eb6-8186-21da838e302a",
+      "name": "Process Area & Calculate Delivery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Process Area & Calculate Delivery').first().json.chatId }}",
+        "text": "=تمام! إليك ملخص طلبك النهائي 🧾\n\n━━━━━━━━━━━━━━━\n{{ $('Process Area & Calculate Delivery').first().json.orderSummary }}\n\n🚚 *توصيل ({{ $('Process Area & Calculate Delivery').first().json.deliveryText }}):* {{ $('Process Area & Calculate Delivery').first().json.deliveryFee }} JOD\n\n✅ *الإجمالي الكلي: {{ $('Process Area & Calculate Delivery').first().json.grandTotal }} JOD*\n━━━━━━━━━━━━━━━\n\n👤 الاسم: {{ $('Process Area & Calculate Delivery').first().json.customerName }}\n📞 الهاتف: {{ $('Process Area & Calculate Delivery').first().json.customerPhone }}\n📍 المنطقة: {{ $('Process Area & Calculate Delivery').first().json.customerArea }}\n\nهل تأكد الطلب؟ اكتب *نعم* للتأكيد أو *لا* للإلغاء",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "8bbfc110-c6a0-47ab-92d7-d36beb6f995b",
+      "name": "Send Order Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// معالجة التأكيد النهائي\nconst data = $input.first().json;\nconst response = data.text?.trim().toLowerCase();\nconst confirmed = ['نعم', 'yes', 'اكيد', 'أكيد', 'تمام', 'موافق', 'اوكي', 'ok', 'okay', '👍'].some(w => response.includes(w));\nconst cancelled = ['لا', 'no', 'الغاء', 'إلغاء', 'بطل', 'كنسل'].some(w => response.includes(w));\n\nreturn [{\n  json: {\n    ...data,\n    confirmed,\n    cancelled,\n    // نقل بيانات الـ session للاستخدام\n    customerName: data.session.customerName,\n    customerPhone: data.session.customerPhone,\n    customerArea: data.session.customerArea,\n    deliveryFee: data.session.deliveryFee,\n    deliveryText: data.session.deliveryText,\n    grandTotal: data.session.grandTotal,\n    productsTotal: data.session.productsTotal,\n    orderSummary: data.session.orderSummary,\n    sheinUrl: data.session.sheinUrl,\n    productData: data.session.productData,\n    orderDate: new Date().toLocaleString('ar-JO', {timeZone: 'Asia/Amman'}),\n    orderId: 'ORD-' + Date.now()\n  }\n}];"
+      },
+      "id": "91dcf687-44d4-40e7-af36-e0cbb3461b9d",
+      "name": "Process Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "confirmed-check",
+              "leftValue": "={{ $json.confirmed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3c49aa11-6bfb-4ef6-bc6d-8f5f19aa353f",
+      "name": "Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "الطلبات",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "رقم الطلب": "={{ $json.orderId }}",
+            "التاريخ": "={{ $json.orderDate }}",
+            "اسم العميل": "={{ $json.customerName }}",
+            "رقم الهاتف": "={{ $json.customerPhone }}",
+            "المنطقة": "={{ $json.customerArea }}",
+            "تفاصيل الطلب": "={{ $json.orderSummary }}",
+            "رابط Shein": "={{ $json.sheinUrl }}",
+            "سعر المنتجات": "={{ $json.productsTotal }}",
+            "سعر التوصيل": "={{ $json.deliveryFee }}",
+            "الإجمالي": "={{ $json.grandTotal }}",
+            "Telegram ID": "={{ $json.userId }}",
+            "الحالة": "جديد"
+          }
+        },
+        "options": {}
+      },
+      "id": "454622b9-45bd-4f89-bbb3-6157f1cea0c9",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        272,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Process Confirmation').first().json.chatId }}",
+        "text": "=🎉 *تم تأكيد طلبك بنجاح!*\n\nرقم طلبك: `{{ $('Process Confirmation').first().json.orderId }}`\n\nسيتم التواصل معك على الرقم *{{ $('Process Confirmation').first().json.customerPhone }}* قريباً لتأكيد موعد التسليم.\n\nشكراً لثقتك بنا! 💙",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "6d8634fc-b5f8-4669-bc97-e497a9e3f4ae",
+      "name": "Send Success Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        496,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_ADMIN_TELEGRAM_ID",
+        "text": "=🔔 *طلب جديد!*\n\nرقم الطلب: `{{ $('Process Confirmation').first().json.orderId }}`\n👤 {{ $('Process Confirmation').first().json.customerName }}\n📞 {{ $('Process Confirmation').first().json.customerPhone }}\n📍 {{ $('Process Confirmation').first().json.customerArea }}\n\n{{ $('Process Confirmation').first().json.orderSummary }}\n\n🚚 توصيل: {{ $('Process Confirmation').first().json.deliveryFee }} JOD\n✅ *الإجمالي: {{ $('Process Confirmation').first().json.grandTotal }} JOD*\n\n🔗 {{ $('Process Confirmation').first().json.sheinUrl }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "b78f68a5-63d9-43c7-86a2-b3b2dc1c960f",
+      "name": "Notify Admin",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "تمام! تم إلغاء الطلب 👍\n\nلو بدك تطلب مرة ثانية، ابعث رابط المنتج من Shein وأنا هنا! 🛍️",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "1cddf157-a1a3-4eda-86c4-fadbb4de3b1b",
+      "name": "Send Cancelled",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "=أهلاً وسهلاً {{ $json.username }}! 👋\n\nأنا بوت الطلبات من Shein 🛍️\n\nابعث لي رابط المنتج أو السلة من تطبيق أو موقع Shein وأنا أتولى الباقي! 😊",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3b711113-1e2c-4598-9070-c1b264941f5d",
+      "name": "Send Welcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "lTWZEpuSTUuktWro",
+          "mode": "list",
+          "cachedResultName": "shein",
+          "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userId": "={{ $json.userId }}",
+            "chatId": "={{ $json.chatId }}",
+            "session": "={{ JSON.stringify({ state: \"idle\" }) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -976,
+        -288
+      ],
+      "id": "6cf35e2f-104b-4f62-94e6-89db847b52dc",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "lTWZEpuSTUuktWro",
+          "mode": "list",
+          "cachedResultName": "shein",
+          "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userId": "={{ $json.userId }}",
+            "chatId": "={{ $json.chatId }}",
+            "session": "={{ JSON.stringify({ state: \"idle\" }) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        -576
+      ],
+      "id": "30a49061-8139-49e7-92ba-a14b6ec7b2e8",
+      "name": "Insert row1"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "lTWZEpuSTUuktWro",
+          "mode": "list",
+          "cachedResultName": "shein",
+          "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userId": "={{ $json.userId }}",
+            "chatId": "={{ $json.chatId }}",
+            "session": "={{ JSON.stringify({ state: \"idle\" }) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        -384
+      ],
+      "id": "dda2e3b0-4b7a-4354-8ff8-9fcbaa03a5f4",
+      "name": "Insert row2"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "lTWZEpuSTUuktWro",
+          "mode": "list",
+          "cachedResultName": "shein",
+          "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userId": "={{ $json.userId }}",
+            "chatId": "={{ $json.chatId }}",
+            "session": "={{ JSON.stringify({ state: \"idle\" }) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        -192
+      ],
+      "id": "fcdda290-5392-41dc-a31e-e613715019f9",
+      "name": "Insert row3"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "lTWZEpuSTUuktWro",
+          "mode": "list",
+          "cachedResultName": "shein",
+          "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userId": "={{ $json.userId }}",
+            "chatId": "={{ $json.chatId }}",
+            "session": "={{ JSON.stringify({ state: \"idle\" }) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        496,
+        192
+      ],
+      "id": "9e4c7efe-939c-4602-a022-520fac6d168e",
+      "name": "Insert row4"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "lTWZEpuSTUuktWro",
+          "mode": "list",
+          "cachedResultName": "shein",
+          "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userId": "={{ $json.userId }}",
+            "chatId": "={{ $json.chatId }}",
+            "session": "={{ JSON.stringify({ state: \"idle\" }) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        0
+      ],
+      "id": "650da96c-b324-4885-8f86-23598ed1f78f",
+      "name": "Insert row5"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "lTWZEpuSTUuktWro",
+          "mode": "list",
+          "cachedResultName": "shein",
+          "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userId": "={{ $json.userId }}",
+            "chatId": "={{ $json.chatId }}",
+            "session": "={{ JSON.stringify({ state: \"idle\" }) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "userId",
+              "displayName": "userId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "chatId",
+              "displayName": "chatId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "session",
+              "displayName": "session",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        -880
+      ],
+      "id": "5a0979db-cf06-4941-b72d-34248bb1ba99",
+      "name": "Insert row6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data }}",
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -80,
+        -976
+      ],
+      "id": "6ced3d44-4f78-42a8-b30f-e9af047b9762",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        -752
+      ],
+      "id": "a36024bb-bbf7-4b38-a53d-02c6874cc685",
+      "name": "Google Gemini Chat Model"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Info": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Session": {
+      "main": [
+        [
+          {
+            "node": "Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router": {
+      "main": [
+        [
+          {
+            "node": "Fetch Shein Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Name",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Phone",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Area & Calculate Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Product Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Session - Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Session - Product": {
+      "main": [
+        [
+          {
+            "node": "Insert row6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Name": {
+      "main": [
+        [
+          {
+            "node": "Insert row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Phone": {
+      "main": [
+        [
+          {
+            "node": "Insert row2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Area & Calculate Delivery": {
+      "main": [
+        [
+          {
+            "node": "Insert row3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Success Message": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Admin": {
+      "main": [
+        [
+          {
+            "node": "Insert row5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Cancelled": {
+      "main": [
+        [
+          {
+            "node": "Insert row4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Merge Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Shein Page": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row1": {
+      "main": [
+        [
+          {
+            "node": "Ask Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row2": {
+      "main": [
+        [
+          {
+            "node": "Ask Area",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row3": {
+      "main": [
+        [
+          {
+            "node": "Send Order Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row6": {
+      "main": [
+        [
+          {
+            "node": "Send Product Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse Product Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {},
+  "tags": []
+}
