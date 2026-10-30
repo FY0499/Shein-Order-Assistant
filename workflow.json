@@ -504,7 +504,7 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "lTWZEpuSTUuktWro",
+          "value": "YOUR_N8N_DATA_TABLE_ID",
           "mode": "list",
           "cachedResultName": "shein",
           "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
@@ -569,7 +569,7 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "lTWZEpuSTUuktWro",
+          "value": "YOUR_N8N_DATA_TABLE_ID",
           "mode": "list",
           "cachedResultName": "shein",
           "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
@@ -634,7 +634,7 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "lTWZEpuSTUuktWro",
+          "value": "YOUR_N8N_DATA_TABLE_ID",
           "mode": "list",
           "cachedResultName": "shein",
           "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
@@ -699,7 +699,7 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "lTWZEpuSTUuktWro",
+          "value": "YOUR_N8N_DATA_TABLE_ID",
           "mode": "list",
           "cachedResultName": "shein",
           "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
@@ -764,7 +764,7 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "lTWZEpuSTUuktWro",
+          "value": "YOUR_N8N_DATA_TABLE_ID",
           "mode": "list",
           "cachedResultName": "shein",
           "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
@@ -829,7 +829,7 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "lTWZEpuSTUuktWro",
+          "value": "YOUR_N8N_DATA_TABLE_ID",
           "mode": "list",
           "cachedResultName": "shein",
           "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
@@ -894,7 +894,7 @@
       "parameters": {
         "dataTableId": {
           "__rl": true,
-          "value": "lTWZEpuSTUuktWro",
+          "value": "YOUR_N8N_DATA_TABLE_ID",
           "mode": "list",
           "cachedResultName": "shein",
           "cachedResultUrl": "/projects/Mu2V5XYJdTEZKrQo/datatables/lTWZEpuSTUuktWro"
