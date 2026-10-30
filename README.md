@@ -1,8 +1,6 @@
 # SHEIN Order Assistant
 
-I built and tested this workflow from start to finish.
-
-A Telegram assistant built with n8n that helps customers place SHEIN orders by sending a product link. It collects the order details, calculates delivery, and sends the customer a final summary for confirmation.
+I created this Telegram assistant with n8n to make placing SHEIN orders easier. Customers send a product link, provide their order details, and receive a delivery calculation and order summary to confirm.
 
 <img width="587" height="250" alt="SHEIN Order Assistant demo" src="https://github.com/user-attachments/assets/91b64d14-9dfb-4e25-af15-224bc5511233" />
 
